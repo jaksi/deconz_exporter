@@ -1,8 +1,38 @@
 import argparse
 from os import path
 from time import sleep
+from wsgiref.simple_server import make_server
 
 import requests
+from prometheus_client import make_wsgi_app
+from prometheus_client.core import REGISTRY, GaugeMetricFamily
+
+
+class DeconzCollector:
+    def __init__(self, api_path, api_key):
+        self.api_path = api_path
+        self.api_key = api_key
+
+    def collect(self):
+        temperature = GaugeMetricFamily(
+            "deconz_temperature_celsius", "deCONZ temperature sensor data", labels=["name"]
+        )
+        humidity = GaugeMetricFamily(
+            "deconz_humidity_ratio", "deCONZ humidity sensor data", labels=["name"]
+        )
+        pressure = GaugeMetricFamily(
+            "deconz_pressure_pascals", "deCONZ pressure sensor data", labels=["name"]
+        )
+        for sensor in requests.get(f"{self.api_path}/{self.api_key}/sensors").json().values():
+            if sensor["type"] == "ZHATemperature":
+                temperature.add_metric([sensor["name"]], sensor["state"]["temperature"] / 100)
+            elif sensor["type"] == "ZHAHumidity":
+                humidity.add_metric([sensor["name"]], sensor["state"]["humidity"] / 10000)
+            elif sensor["type"] == "ZHAPressure":
+                pressure.add_metric([sensor["name"]], sensor["state"]["pressure"] * 100)
+        yield temperature
+        yield humidity
+        yield pressure
 
 
 def main():
@@ -28,7 +58,10 @@ def main():
         api_key = response.json()[0]["success"]["username"]
         with open(args.api_key_file, "w") as api_key_file:
             api_key_file.write(api_key)
-    print(requests.get(f"{api_path}/{api_key}/sensors").json())
+    REGISTRY.register(DeconzCollector(api_path, api_key))
+    app = make_wsgi_app(REGISTRY)
+    httpd = make_server("", 8000, app)
+    httpd.serve_forever()
 
 
 if __name__ == "__main__":
