@@ -2,19 +2,20 @@ import argparse
 from os import makedirs, path
 from sys import stderr
 from time import sleep
+from typing import Any, Dict, Generator
 from wsgiref.simple_server import make_server
 
 import requests
 from prometheus_client import make_wsgi_app
-from prometheus_client.core import REGISTRY, GaugeMetricFamily
+from prometheus_client.core import REGISTRY, GaugeMetricFamily, Metric
 
 
 class DeconzCollector:
-    def __init__(self, device, api_key):
+    def __init__(self, device: Dict[str, Any], api_key: str):
         self.device = device
         self.api_key = api_key
 
-    def collect(self):
+    def collect(self) -> Generator[Metric, None, None]:
         temperature = GaugeMetricFamily(
             "deconz_temperature_celsius",
             "deCONZ temperature sensor data",
@@ -46,7 +47,7 @@ class DeconzCollector:
         yield pressure
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--api_key_directory", default="api_keys")
     parser.add_argument("--listen_host", default="")
