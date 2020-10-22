@@ -1,5 +1,5 @@
 import argparse
-from os import makedirs, path
+from os import path
 from time import sleep
 
 import requests
