@@ -38,6 +38,8 @@ class DeconzCollector:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--api_key_file", default="api_key")
+    parser.add_argument("--listen_host", default="")
+    parser.add_argument("--listen_port", default=9759)
     args = parser.parse_args()
     device = requests.get("https://dresden-light.appspot.com/discover").json()[0]
     api_path = f"http://{device['internalipaddress']}:{device['internalport']}/api"
@@ -60,7 +62,7 @@ def main():
             api_key_file.write(api_key)
     REGISTRY.register(DeconzCollector(api_path, api_key))
     app = make_wsgi_app(REGISTRY)
-    httpd = make_server("", 8000, app)
+    httpd = make_server(args.listen_host, args.listen_port, app)
     httpd.serve_forever()
 
 
