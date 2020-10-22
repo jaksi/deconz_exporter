@@ -1,5 +1,6 @@
 import argparse
 from os import makedirs, path
+from sys import stderr
 from time import sleep
 from wsgiref.simple_server import make_server
 
@@ -68,7 +69,9 @@ def main():
                 if response.status_code == 200:
                     unlocked = True
                 else:
-                    print(f"Press the button for {device['id']}")
+                    print(
+                        f"{device['id']}: {response.json()[0]['error']['description']}", file=stderr
+                    )
                     sleep(10)
             api_key = response.json()[0]["success"]["username"]
             with open(api_key_file, "w") as f:
