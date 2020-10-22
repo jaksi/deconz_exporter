@@ -1,12 +1,18 @@
 [MESSAGES CONTROL]
 
 disable=missing-docstring,
-        too-few-public-methods
+        too-few-public-methods,
+        redefined-builtin
 
 
 [BASIC]
 
-good-names=f
+good-names=f,
+           T,
+           x,
+           c,
+           id,
+           s
 
 
 [FORMAT]

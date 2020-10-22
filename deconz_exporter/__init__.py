@@ -9,10 +9,13 @@ import requests
 from prometheus_client import make_wsgi_app
 from prometheus_client.core import REGISTRY, GaugeMetricFamily, Metric
 
+from device import Device, device_from_dict
+
 
 class DeconzCollector:
-    def __init__(self, device: Dict[str, Any], api_key: str):
+    def __init__(self, device: Device, api_key: str):
         self.device = device
+        self.api_path = f"http://{device.internalipaddress}:{device.internalport}/api"
         self.api_key = api_key
 
     def collect(self) -> Generator[Metric, None, None]:
@@ -27,20 +30,18 @@ class DeconzCollector:
         pressure = GaugeMetricFamily(
             "deconz_pressure_pascals", "deCONZ pressure sensor data", labels=["device", "name"]
         )
-        for sensor in (
-            requests.get(f"{self.device['api_path']}/{self.api_key}/sensors").json().values()
-        ):
+        for sensor in requests.get(f"{self.api_path}/{self.api_key}/sensors").json().values():
             if sensor["type"] == "ZHATemperature":
                 temperature.add_metric(
-                    [self.device["id"], sensor["name"]], sensor["state"]["temperature"] / 100
+                    [self.device.id, sensor["name"]], sensor["state"]["temperature"] / 100
                 )
             elif sensor["type"] == "ZHAHumidity":
                 humidity.add_metric(
-                    [self.device["id"], sensor["name"]], sensor["state"]["humidity"] / 10000
+                    [self.device.id, sensor["name"]], sensor["state"]["humidity"] / 10000
                 )
             elif sensor["type"] == "ZHAPressure":
                 pressure.add_metric(
-                    [self.device["id"], sensor["name"]], sensor["state"]["pressure"] * 100
+                    [self.device.id, sensor["name"]], sensor["state"]["pressure"] * 100
                 )
         yield temperature
         yield humidity
@@ -54,25 +55,24 @@ def main() -> None:
     parser.add_argument("--listen_port", default=9759)
     args = parser.parse_args()
     makedirs(args.api_key_directory, exist_ok=True)
-    for device in requests.get("https://dresden-light.appspot.com/discover").json():
-        device["api_path"] = f"http://{device['internalipaddress']}:{device['internalport']}/api"
+    for device_dict in requests.get("https://dresden-light.appspot.com/discover").json():
+        device = device_from_dict(device_dict)
+        api_path = f"http://{device.internalipaddress}:{device.internalport}/api"
         makedirs(args.api_key_directory, exist_ok=True)
-        api_key_file = path.join(args.api_key_directory, device["id"])
+        api_key_file = path.join(args.api_key_directory, device.id)
         if path.isfile(api_key_file):
             with open(api_key_file) as f:
                 api_key = f.read()
         else:
             unlocked = False
             while not unlocked:
-                response = requests.post(device["api_path"], json={"devicetype": "deconz_exporter"})
+                response = requests.post(api_path, json={"devicetype": "deconz_exporter"})
                 if response.status_code != 403:
                     response.raise_for_status()
                 if response.status_code == 200:
                     unlocked = True
                 else:
-                    print(
-                        f"{device['id']}: {response.json()[0]['error']['description']}", file=stderr
-                    )
+                    print(f"{device.id}: {response.json()[0]['error']['description']}", file=stderr)
                     sleep(10)
             api_key = response.json()[0]["success"]["username"]
             with open(api_key_file, "w") as f:
