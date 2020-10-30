@@ -9,7 +9,7 @@ import requests
 from prometheus_client import make_wsgi_app
 from prometheus_client.core import REGISTRY, GaugeMetricFamily, Metric
 
-from device import Device, device_from_dict
+from .device import Device, device_from_dict
 
 
 class DeconzCollector:
