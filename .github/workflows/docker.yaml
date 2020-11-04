@@ -10,7 +10,7 @@ jobs:
       - name: Push to Docker Hub
         uses: docker/build-push-action@v1
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: jaksi
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: jaksi/deconz-exporter
           tag_with_ref: true
