@@ -16,4 +16,5 @@ jobs:
           username: jaksi
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: jaksi/deconz-exporter
+          tags: latest
 
